@@ -46,6 +46,17 @@ impl NdArray {
         Ok(self.data[offset])
     }
 
+    pub fn set(&mut self, indices:Vec<usize>, val:f64) {
+        //Initializing the offset
+        let mut offset: usize = 0;
+
+        //Basically applying the concept explained in new
+        for i in 0..self.stride.len(){
+            offset = offset + (self.stride[i]*indices[i])
+        }
+        self.data[offset] = val;
+    } 
+
     // Creating a matrix filled with ones (Standard Numpy Function)
     pub fn ones(shape: Vec<usize>) -> NdArray{
         // Multiplying the values of the shape in order to find size
@@ -81,6 +92,15 @@ impl NdArray {
 
         NdArray::new(data, vec![1,n])
     }
+    // This function will create an x by x identity matrix
+    pub fn identity(x: usize) -> NdArray{
+        let mut matrix = NdArray::zeros(vec![x,x]);
+        // Not necessary to loop through, you already know the values
+        for i in 0..x {
+            matrix.set(vec![i, i], 1.0);
+        }
+        matrix
+    }
 }
 
 #[cfg(test)]
@@ -88,14 +108,74 @@ mod tests {
     use super::*;
 
     #[test]
+    fn test_new() {
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let shape = vec![2, 3];
+        let arr = NdArray::new(data, shape);
+        assert_eq!(arr.stride, vec![3, 1]);
+        assert_eq!(arr.shape, vec![2, 3]);
+    }
+
+    #[test]
     fn test_get() {
         let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
         let shape = vec![2, 3];
         let arr = NdArray::new(data, shape);
-
         assert_eq!(arr.get(vec![0, 0]).unwrap(), 1.0);
         assert_eq!(arr.get(vec![0, 1]).unwrap(), 2.0);
+        assert_eq!(arr.get(vec![0, 2]).unwrap(), 3.0);
         assert_eq!(arr.get(vec![1, 0]).unwrap(), 4.0);
+        assert_eq!(arr.get(vec![1, 1]).unwrap(), 5.0);
         assert_eq!(arr.get(vec![1, 2]).unwrap(), 6.0);
+    }
+
+    #[test]
+    fn test_set() {
+        let data = vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0];
+        let shape = vec![2, 3];
+        let mut arr = NdArray::new(data, shape);
+        arr.set(vec![0, 0], 99.0);
+        assert_eq!(arr.get(vec![0, 0]).unwrap(), 99.0);
+        arr.set(vec![1, 2], 42.0);
+        assert_eq!(arr.get(vec![1, 2]).unwrap(), 42.0);
+    }
+
+    #[test]
+    fn test_zeros() {
+        let arr = NdArray::zeros(vec![2, 3]);
+        assert_eq!(arr.get(vec![0, 0]).unwrap(), 0.0);
+        assert_eq!(arr.get(vec![1, 2]).unwrap(), 0.0);
+        assert_eq!(arr.shape, vec![2, 3]);
+    }
+
+    #[test]
+    fn test_ones() {
+        let arr = NdArray::ones(vec![2, 3]);
+        assert_eq!(arr.get(vec![0, 0]).unwrap(), 1.0);
+        assert_eq!(arr.get(vec![1, 2]).unwrap(), 1.0);
+        assert_eq!(arr.shape, vec![2, 3]);
+    }
+
+    #[test]
+    fn test_arange() {
+        let arr = NdArray::arange(0.0, 6.0, 1.0);
+        assert_eq!(arr.get(vec![0, 0]).unwrap(), 0.0);
+        assert_eq!(arr.get(vec![0, 1]).unwrap(), 1.0);
+        assert_eq!(arr.get(vec![0, 5]).unwrap(), 5.0);
+        let arr2 = NdArray::arange(0.0, 10.0, 2.0);
+        assert_eq!(arr2.get(vec![0, 0]).unwrap(), 0.0);
+        assert_eq!(arr2.get(vec![0, 2]).unwrap(), 4.0);
+        assert_eq!(arr2.get(vec![0, 4]).unwrap(), 8.0);
+    }
+
+    #[test]
+    fn test_identity() {
+        let arr = NdArray::identity(3);
+        assert_eq!(arr.get(vec![0, 0]).unwrap(), 1.0);
+        assert_eq!(arr.get(vec![1, 1]).unwrap(), 1.0);
+        assert_eq!(arr.get(vec![2, 2]).unwrap(), 1.0);
+        assert_eq!(arr.get(vec![0, 1]).unwrap(), 0.0);
+        assert_eq!(arr.get(vec![1, 0]).unwrap(), 0.0);
+        assert_eq!(arr.get(vec![0, 2]).unwrap(), 0.0);
     }
 }
