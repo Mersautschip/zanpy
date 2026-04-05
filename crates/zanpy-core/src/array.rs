@@ -159,6 +159,38 @@ impl NdArray {
         }
         Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
     }
+
+    // Add all values together
+    pub fn sum(arr: &NdArray) -> f64 {
+        arr.data.iter().sum()
+    }
+
+    pub fn mean(arr: &NdArray) -> f64 {
+        NdArray::sum(arr)/arr.data.len() as f64
+    }
+
+    pub fn max(arr: &NdArray) -> f64 {
+        // Make sure max is a val in matrix
+        let mut max = arr.data[0];
+        for i in &arr.data{
+            if *i > max{
+                max = *i;
+            }
+        }
+        max
+    }
+
+    pub fn min(arr: &NdArray) -> f64 {
+        // Make sure max is a val in matrix
+        let mut min = arr.data[0];
+        for i in &arr.data{
+            //Interestingly *i dereferences i
+            if *i < min{
+                min = *i;
+            }
+        }
+        min
+    }
 }
 
 #[cfg(test)]
