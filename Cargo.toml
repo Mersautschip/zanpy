@@ -1,0 +1,5 @@
+[workspace]
+members = [
+    "crates/zanpy-core",
+]
+resolver = "2"
