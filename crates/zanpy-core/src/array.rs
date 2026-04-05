@@ -101,6 +101,64 @@ impl NdArray {
         }
         matrix
     }
+
+    // Function to add equal matrices together
+    pub fn add(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray, String> {
+        // Matrices need to be equal size
+        if arr1.shape != arr2.shape{
+            return Err("Shapes are not equal".to_string());
+        }
+        let n = arr1.data.len();
+        let mut data = vec![0.0;n];
+        // Since equal size is assured this becomes O(n)
+        for i in 0..n{
+            data[i] = arr1.data[i] + arr2.data[i]
+        }
+        Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
+    }
+
+    // Same logic as above function.
+    pub fn subtract(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray, String> {
+        // Matrices need to be equal size
+        if arr1.shape != arr2.shape{
+            return Err("Shapes are not equal".to_string());
+        }
+        let n = arr1.data.len();
+        let mut data = vec![0.0;n];
+        // Since equal size is assured this becomes O(n)
+        for i in 0..n{
+            data[i] = arr1.data[i] - arr2.data[i]
+        }
+        Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
+    }
+
+    pub fn multiply(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray, String> {
+        // Matrices need to be equal size
+        if arr1.shape != arr2.shape{
+            return Err("Shapes are not equal".to_string());
+        }
+        let n = arr1.data.len();
+        let mut data = vec![0.0;n];
+        // Since equal size is assured this becomes O(n)
+        for i in 0..n{
+            data[i] = arr1.data[i] * arr2.data[i]
+        }
+        Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
+    }
+
+    pub fn divide(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray, String> {
+        // Matrices need to be equal size
+        if arr1.shape != arr2.shape{
+            return Err("Shapes are not equal".to_string());
+        }
+        let n = arr1.data.len();
+        let mut data = vec![0.0;n];
+        // Since equal size is assured this becomes O(n)
+        for i in 0..n{
+            data[i] = arr1.data[i] / arr2.data[i]
+        }
+        Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
+    }
 }
 
 #[cfg(test)]
