@@ -35,7 +35,20 @@ impl NdArray {
         if indices.len() != self.stride.len() {
             return Err("Wrong number of indices".to_string());
         }
+        Ok(self.data[self.offset(indices)])
+    }
+    
+    fn get_strides(arr: &NdArray, stride: &[usize], indices: &[usize]) -> f64 {
+        let mut offset: usize = 0;
+        for i in 0..stride.len() {
+            // This is the core of broadcasting: 
+            // if stride[i] is 0, this dimension effectively disappears!
+            offset += stride[i] * indices[i];
+        }
+        arr.data[offset]
+    }
 
+    fn offset(&self, indices: Vec<usize>) -> usize {
         //Initializing the offset
         let mut offset: usize = 0;
 
@@ -43,18 +56,27 @@ impl NdArray {
         for i in 0..self.stride.len(){
             offset = offset + (self.stride[i]*indices[i])
         }
-        Ok(self.data[offset])
+        offset
+    }
+
+    // Need to check if works
+    fn rev_offset(&self, mut offset: usize) -> Vec<usize> {
+        // Initialize the index vector
+        let dimensions = self.shape.len();
+        let mut indices = vec![0;dimensions];
+        let mut skips = vec![1;dimensions];
+        for i in (0..dimensions-1).rev(){
+            skips[i] = skips[i+1] * skips[self.shape[i+1]]
+        }
+        for i in 0..dimensions {
+            indices[i] = offset / skips[i];
+            offset %= skips[i];
+        }
+        indices
     }
 
     pub fn set(&mut self, indices:Vec<usize>, val:f64) {
-        //Initializing the offset
-        let mut offset: usize = 0;
-
-        //Basically applying the concept explained in new
-        for i in 0..self.stride.len(){
-            offset = offset + (self.stride[i]*indices[i])
-        }
-        self.data[offset] = val;
+        self.data[self.offset(indices)] = val;
     } 
 
     // Creating a matrix filled with ones (Standard Numpy Function)
@@ -103,61 +125,129 @@ impl NdArray {
     }
 
     // Function to add equal matrices together
-    pub fn add(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray, String> {
-        // Matrices need to be equal size
-        if arr1.shape != arr2.shape{
-            return Err("Shapes are not equal".to_string());
+    pub fn add(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
+        // Matrices don't need to be equal size with the broadcasting function
+        let (out_shape, strides1, strides2) = NdArray::broadcast(arr1, arr2)?;
+        let total_elements = out_shape.iter().product();
+        let mut index = vec![0;out_shape.len()];
+        let mut data = Vec::with_capacity(total_elements);
+
+        for _i in 0..total_elements {
+            
+            // Give an image in order to not consume RAM
+            let val1 = NdArray::get_strides(arr1, &strides1, &index);
+            let val2 = NdArray::get_strides(arr2, &strides2, &index);
+
+            data.push(val1 + val2);
+
+
+            for j in (0..out_shape.len()).rev() {
+                index[j] += 1; // Increment this dimension
+
+                if index[j] < out_shape[j] {
+                    // No carry needed, we are done updating for this step!
+                    break;
+                } else {index[j] = 0;}
+            }
         }
-        let n = arr1.data.len();
-        let mut data = vec![0.0;n];
-        // Since equal size is assured this becomes O(n)
-        for i in 0..n{
-            data[i] = arr1.data[i] + arr2.data[i]
-        }
-        Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
+        Ok(NdArray::new(data, out_shape))
     }
 
     // Same logic as above function.
-    pub fn subtract(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray, String> {
-        // Matrices need to be equal size
-        if arr1.shape != arr2.shape{
-            return Err("Shapes are not equal".to_string());
+    pub fn subtract(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
+        // Matrices don't need to be equal size with the broadcasting function
+        let (out_shape, strides1, strides2) = NdArray::broadcast(arr1, arr2)?;
+        let total_elements = out_shape.iter().product();
+        let mut index = vec![0;out_shape.len()];
+        let mut data = Vec::with_capacity(total_elements);
+
+        for _i in 0..total_elements {
+            
+            // Give an image in order to not consume RAM
+            let val1 = NdArray::get_strides(arr1, &strides1, &index);
+            let val2 = NdArray::get_strides(arr2, &strides2, &index);
+
+            data.push(val1 - val2);
+
+
+            for j in (0..out_shape.len()).rev() {
+                index[j] += 1; // Increment this dimension
+
+                if index[j] < out_shape[j] {
+                    // No carry needed, we are done updating for this step!
+                    break;
+                } else {
+                    // Carry needed: reset this dimension and let the loop 
+                    // increment the next dimension (j-1)
+                    index[j] = 0;
+                }
+            }
         }
-        let n = arr1.data.len();
-        let mut data = vec![0.0;n];
-        // Since equal size is assured this becomes O(n)
-        for i in 0..n{
-            data[i] = arr1.data[i] - arr2.data[i]
-        }
-        Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
+        Ok(NdArray::new(data, out_shape))
     }
 
-    pub fn multiply(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray, String> {
-        // Matrices need to be equal size
-        if arr1.shape != arr2.shape{
-            return Err("Shapes are not equal".to_string());
+    pub fn multiply(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
+        // Matrices don't need to be equal size with the broadcasting function
+        let (out_shape, strides1, strides2) = NdArray::broadcast(arr1, arr2)?;
+        let total_elements = out_shape.iter().product();
+        let mut index = vec![0;out_shape.len()];
+        let mut data = Vec::with_capacity(total_elements);
+
+        for _i in 0..total_elements {
+            
+            // Give an image in order to not consume RAM
+            let val1 = NdArray::get_strides(arr1, &strides1, &index);
+            let val2 = NdArray::get_strides(arr2, &strides2, &index);
+
+            data.push(val1 * val2);
+
+
+            for j in (0..out_shape.len()).rev() {
+                index[j] += 1; // Increment this dimension
+
+                if index[j] < out_shape[j] {
+                    // No carry needed, we are done updating for this step!
+                    break;
+                } else {
+                    // Carry needed: reset this dimension and let the loop 
+                    // increment the next dimension (j-1)
+                    index[j] = 0;
+                }
+            }
         }
-        let n = arr1.data.len();
-        let mut data = vec![0.0;n];
-        // Since equal size is assured this becomes O(n)
-        for i in 0..n{
-            data[i] = arr1.data[i] * arr2.data[i]
-        }
-        Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
+        Ok(NdArray::new(data, out_shape))
     }
 
-    pub fn divide(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray, String> {
-        // Matrices need to be equal size
-        if arr1.shape != arr2.shape{
-            return Err("Shapes are not equal".to_string());
+    pub fn divide(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
+        // Matrices don't need to be equal size with the broadcasting function
+        let (out_shape, strides1, strides2) = NdArray::broadcast(arr1, arr2)?;
+        let total_elements = out_shape.iter().product();
+        let mut index = vec![0;out_shape.len()];
+        let mut data = Vec::with_capacity(total_elements);
+
+        for _i in 0..total_elements {
+            
+            // Give an image in order to not consume RAM
+            let val1 = NdArray::get_strides(arr1, &strides1, &index);
+            let val2 = NdArray::get_strides(arr2, &strides2, &index);
+
+            data.push(val1 / val2);
+
+
+            for j in (0..out_shape.len()).rev() {
+                index[j] += 1; // Increment this dimension
+
+                if index[j] < out_shape[j] {
+                    // No carry needed, we are done updating for this step!
+                    break;
+                } else {
+                    // Carry needed: reset this dimension and let the loop 
+                    // increment the next dimension (j-1)
+                    index[j] = 0;
+                }
+            }
         }
-        let n = arr1.data.len();
-        let mut data = vec![0.0;n];
-        // Since equal size is assured this becomes O(n)
-        for i in 0..n{
-            data[i] = arr1.data[i] / arr2.data[i]
-        }
-        Ok(NdArray { data, shape: arr1.shape.clone() , stride: arr1.stride.clone() })
+        Ok(NdArray::new(data, out_shape))
     }
 
     // Add all values together
@@ -190,6 +280,55 @@ impl NdArray {
             }
         }
         min
+    }
+
+    pub fn reshape(arr: &NdArray, shape: Vec<usize>) -> Result<NdArray, String> {
+        // Make sure that the new shape has an equal amount of values as original
+        if arr.shape.iter().product::<usize>() != shape.iter().product::<usize>(){
+            return Err("Shape values don't match".to_string())
+        }
+        let mut strides = vec![1; shape.len()];
+
+        for i in (0..shape.len()-1).rev(){
+            strides[i] = strides[i+1] * shape[i+1];
+        }
+        Ok(NdArray { data: arr.data.clone(), shape , stride: strides})
+    } 
+
+    pub fn transpose(arr: &NdArray) -> NdArray {
+        let mut shape = arr.shape.clone();
+        shape.reverse();
+        let mut stride = arr.stride.clone();
+        stride.reverse();
+        NdArray { data: arr.data.clone(), shape, stride }
+    }
+
+    pub fn broadcast(arr1: &NdArray, arr2: &NdArray) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>),String> {
+        let len1 = arr1.shape.len();
+        let len2 = arr2.shape.len();
+        let maxlen = len1.max(len2);
+        let mut newdim = vec![1;maxlen];
+        let mut strides1 = vec![1;maxlen];
+        let mut strides2 = vec![1;maxlen];
+
+        for i in 0..maxlen{
+            let dim1 = if i < len1 {arr1.shape[len1-i-1]} else {1};
+            let dim2 = if i < len2 {arr2.shape[len2-i-1]} else {1};
+
+            if dim1 != dim2 && dim1 != 1 && dim2 != 1{
+                return Err("Dimensions are not compatible".to_string());
+            }
+            else{
+                newdim[i] = dim1.max(dim2);
+                strides1[i] = if dim1 == 1 { 0 } else { arr1.stride[len1 - i - 1] };
+                strides2[i] = if dim2 == 1 { 0 } else { arr2.stride[len2 - i - 1] };
+            }
+        }
+        newdim.reverse();
+        strides1.reverse();
+        strides2.reverse();
+        Ok((newdim, strides1, strides2))
+
     }
 }
 
