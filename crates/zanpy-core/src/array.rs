@@ -138,14 +138,6 @@ impl NdArray {
         Ok(NdArray { data: arr.data.clone(), shape , stride: strides})
     } 
 
-    pub fn transpose(arr: &NdArray) -> NdArray {
-        let mut shape = arr.shape.clone();
-        shape.reverse();
-        let mut stride = arr.stride.clone();
-        stride.reverse();
-        NdArray { data: arr.data.clone(), shape, stride }
-    }
-
     pub fn broadcast(arr1: &NdArray, arr2: &NdArray) -> Result<(Vec<usize>, Vec<usize>, Vec<usize>),String> {
         let len1 = arr1.shape.len();
         let len2 = arr2.shape.len();
@@ -172,6 +164,36 @@ impl NdArray {
         strides2.reverse();
         Ok((newdim, strides1, strides2))
 
+    }
+
+    pub fn transpose(&mut self) -> Result<(), String> {
+        if self.shape.len() != 2 {
+            return Err("Transposition is only allowed for two dimensions".to_string())
+        }
+        self.shape.reverse();
+        self.stride.reverse();
+        Ok(())
+    }
+
+    // Transposition in multiple dimensions(works for 2d as well)
+    pub fn permute(&self, axes: &[usize]) -> Result<NdArray, String> {
+        if axes.len() != self.shape.len() {
+            return Err("Permutation must match the number of dimensions".to_string());
+        }
+
+        let mut new_shape = vec![0; self.shape.len()];
+        let mut new_stride = vec![0; self.stride.len()];
+
+        for (i, &axis_idx) in axes.iter().enumerate() {
+            new_shape[i] = self.shape[axis_idx];
+            new_stride[i] = self.stride[axis_idx];
+        }
+
+        Ok(NdArray {
+            data: self.data.clone(), // Still zero-copy if using Rc
+            shape: new_shape,
+            stride: new_stride,
+        })
     }
 }
 
