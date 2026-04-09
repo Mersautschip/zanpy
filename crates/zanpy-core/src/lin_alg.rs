@@ -1,3 +1,5 @@
+use std::{f32::consts::PI, primitive};
+
 use crate::array::NdArray;
 
 pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
@@ -48,3 +50,75 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
 
 }
 
+fn offset(stride: &Vec<usize>, indices: Vec<usize>) -> usize {
+        //Initializing the offset
+        let mut offset: usize = 0;
+
+        //Basically applying the concept explained in new
+        for i in 0..stride.len(){
+            offset = offset + (stride[i]*indices[i])
+        }
+        offset
+    }
+
+pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
+    // This will use LU decomposition
+    let stride = &arr.stride;
+    let n = arr.shape[0];
+    if arr.shape.len() != 2 || n != arr.shape[1]{
+        return Err("Matrix must be a square & two dimensional".to_string());
+    }
+
+    let mut a = arr.data.clone();
+    let mut inv_data = NdArray::identity(n);
+    
+    for col in 0..n {
+        let pivot_row = (col..n)
+            .max_by(|&i, &j|{
+                a[offset(stride,vec![i,col])]
+                    .abs()
+                    .partial_cmp(
+                        &a[offset(stride,vec![j,col])]
+                            .abs()
+                    )
+                    .unwrap()
+            })
+            .unwrap();
+        if a[offset(stride,vec![pivot_row,col])].abs() < 1e-12{
+            return Err("Matrix is singular and cannot be inverted!".to_string());
+        }
+
+        if pivot_row != col {
+            for k in 0..n {
+                a.swap(
+                    offset(stride,vec![col,k]),
+                    offset(stride,vec![pivot_row,k]) 
+                );
+                inv_data.data.swap(
+                    col * n + k,
+                    pivot_row * n + k
+                );
+            }
+        }
+
+        let pivot_val = a[offset(stride,vec![col, col])];
+        for row in 0..n {
+            if row == col {
+                continue;
+            }
+            let factor = a[offset(stride,vec![row, col])] / pivot_val;
+            for k in 0..n {
+                let a_val = a[offset(stride,vec![col, k])];
+                a[offset(stride,vec![row, k])] -= factor * a_val;
+                let inv_val = inv_data.get(vec![col, k])?;
+                inv_data.data[row*n+k] -= factor * inv_val;
+            }
+        }
+
+        for k in 0..n {
+            a[offset(stride,vec![col,k])] /= pivot_val;
+            inv_data.data[col*n+k] /= pivot_val;
+        }
+    }
+    Ok(inv_data)
+}
