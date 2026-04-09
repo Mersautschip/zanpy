@@ -1,5 +1,3 @@
-use std::{f32::consts::PI, primitive};
-
 use crate::array::NdArray;
 
 pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
