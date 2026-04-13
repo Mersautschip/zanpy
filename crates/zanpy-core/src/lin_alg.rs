@@ -13,7 +13,7 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
         return Err("Error: Matrix 1 Column Does Not Match Matrix 2 Rows".to_string())
     }
 
-    if arr1.shape.len() != 2 || arr2.shape.len() != 2{
+    if arr1.rank != 2 || arr2.rank != 2{
         return Err("Error: Only 2D Matrices Are Allowed".to_string())
     }
 
@@ -37,18 +37,23 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
                 // let res_idx = i * cols_b + j; Removed for speed 
                 // let arr2_idx = k * s2_row + j * s2_col; Same
 
-                // arr2 might have a custom stride (e.g. if it was transposed)
+                // Function does not currently support transposed matrices
                 
                 result_data[i * cols_b + j] += val_a * arr2.data[k * s2_row + j * s2_col];
             }
         }
     }
 
-    Ok(NdArray::new(result_data, vec![rows_a,cols_b]))
+    // This might be a time-loss:
+    let mut input_shape = [1usize;8];
+    input_shape[0] = rows_a;
+    input_shape[1] = cols_b;
+
+    Ok(NdArray::new(result_data, &input_shape))
 
 }
 
-fn offset(stride: &Vec<usize>, indices: Vec<usize>) -> usize {
+fn offset(stride: &[usize;8], indices: Vec<usize>) -> usize {
         //Initializing the offset
         let mut offset: usize = 0;
 
@@ -108,7 +113,7 @@ pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
             for k in 0..n {
                 let a_val = a[offset(stride,vec![col, k])];
                 a[offset(stride,vec![row, k])] -= factor * a_val;
-                let inv_val = inv_data.get(vec![col, k])?;
+                let inv_val = inv_data.get(&[col, k,0,0,0,0,0,0])?;
                 inv_data.data[row*n+k] -= factor * inv_val;
             }
         }

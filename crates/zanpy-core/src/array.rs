@@ -166,12 +166,16 @@ impl NdArray {
     } 
 
     pub fn broadcast(arr1: &NdArray, arr2: &NdArray) -> Result<([usize;8], [usize;8], [usize;8]),String> {
-        let len1 = arr1.shape.len();
-        let len2 = arr2.shape.len();
+        let len1 = arr1.rank;
+        let len2 = arr2.rank;
         const MAXLEN:usize = 8;
         let mut newdim = [1;MAXLEN];
         let mut strides1 = [1;MAXLEN];
         let mut strides2 = [1;MAXLEN];
+
+        if arr1.shape == arr2.shape{
+            return Ok((arr1.shape, arr1.stride,arr2.stride));
+        }
 
         for i in 0..MAXLEN{
             let dim1 = if i < len1 {arr1.shape[len1-i-1]} else {1};

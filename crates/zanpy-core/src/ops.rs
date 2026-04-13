@@ -2,12 +2,12 @@ use crate::array::NdArray;
 
 // This is vector to vector dot product
 pub fn dot_prod(arr1: &NdArray, arr2: &NdArray) -> Result<f64,String> {
-    let dim1 = arr1.shape.len();
-    let dim2 = arr2.shape.len();
+    let dim1 = arr1.rank;
+    let dim2 = arr2.rank;
     if arr1.shape[0] != arr2.shape[0] || dim1 != 1 || dim2 != 1 {
         return Err("Vectors are not 1D or not equivalent in size".to_string());
     }
-    let mut total:f64 = 0.0;
+    let mut total = 0.0;
     for i in 0..arr1.data.len(){
         total += arr1.data[i] + arr2.data[i]
     }
@@ -39,7 +39,7 @@ pub fn add(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
             } else {index[j] = 0;}
         }
     }
-    Ok(NdArray::new(data, out_shape))
+    Ok(NdArray::new(data, &out_shape))
 }
 
 // Same logic as above function.
@@ -72,7 +72,7 @@ pub fn subtract(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
             }
         }
     }
-    Ok(NdArray::new(data, out_shape))
+    Ok(NdArray::new(data, &out_shape))
 }
 
 pub fn multiply(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
@@ -104,7 +104,7 @@ pub fn multiply(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
             }
         }
     }
-    Ok(NdArray::new(data, out_shape))
+    Ok(NdArray::new(data, &out_shape))
 }
 
 pub fn divide(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
@@ -136,7 +136,7 @@ pub fn divide(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
             }
         }
     }
-    Ok(NdArray::new(data, out_shape))
+    Ok(NdArray::new(data, &out_shape))
 }
 
 // Add all values together
@@ -145,7 +145,7 @@ pub fn sum(arr: &NdArray) -> f64 {
 }
 
 pub fn mean(arr: &NdArray) -> f64 {
-    NdArray::sum(arr)/arr.data.len() as f64
+    sum(arr)/arr.data.len() as f64
 }
 
 pub fn max(arr: &NdArray) -> f64 {
