@@ -1,4 +1,6 @@
 use crate::array::NdArray;
+use wide::f64x4;
+use std::mem::MaybeUninit;
 
 pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
     // We're bounding this to 2D
@@ -17,32 +19,55 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
         return Err("Error: Only 2D Matrices Are Allowed".to_string())
     }
 
-    let mut result_data = vec![0.0; rows_a * cols_b];
+    let mut result_data: Vec<MaybeUninit<f64>> = Vec::with_capacity(rows_a * cols_b);
 
-    
+    unsafe {
+        std::ptr::write_bytes(result_data.as_mut_ptr(), 0, rows_a * cols_b);
+    }
 
     let s1_row = arr1.stride[0];
     let s1_col = arr1.stride[1];
     let s2_row = arr2.stride[0];
     let s2_col = arr2.stride[1];
 
+    let a_ptr = arr1.data.as_ptr();
+    let b_ptr = arr2.data.as_ptr();
+    let r_ptr = result_data.as_mut_ptr() as *mut f64;
+
     for i in 0..rows_a {
         for k in 0..cols_a {
-            // Using the stride of arr1 to find the element
-            let val_a = arr1.data[i * s1_row + k * s1_col];
+            // Using the stride of arr1 to find the element0
+            let val_a = unsafe {*a_ptr.add(i * s1_row + k * s1_col)};
+            let a_vec = f64x2::splat(val_a);
 
-            for j in 0..cols_b {
-                // We calculate the flat index for the result and arr2
-                // Result is always a fresh, contiguous Vec (Standard Row-Major)
-                // let res_idx = i * cols_b + j; Removed for speed 
-                // let arr2_idx = k * s2_row + j * s2_col; Same
+            let b_row_p = unsafe {b_ptr.add(k * s2_row)};
+            let r_row_p = unsafe{r_ptr.add(i * cols_b)};
 
-                // Function does not currently support transposed matrices
-                
-                result_data[i * cols_b + j] += val_a * arr2.data[k * s2_row + j * s2_col];
+            let mut j = 0;
+            while j + 2 <= cols_b {
+                    unsafe {
+                    let b_vec = f64x2::from([ *b_row_ptr.add(j), *b_row_ptr.add(j + 1) ]);
+                    let r_vec = f64x2::from([ *r_row_ptr.add(j), *r_row_ptr.add(j + 1) ]);
+                    let result = r_vec + a_vec * b_vec;
+                    let out: [f64; 2] = result.into();
+                    *r_row_ptr.add(j) = out[0];
+                    *r_row_ptr.add(j + 1) = out[1];
+                }
+                j += 2;
+            }
+            
+            
+            if j < cols_b {
+                unsafe {
+                    *r_row_ptr.add(j) += val_a * *b_row_ptr.add(j);
+                }
             }
         }
     }
+
+    let result_data = unsafe{
+        std::mem::transmute::<Vec<MaybeUninit<f64>>, Vec<f64>>(result_data)
+    };
 
     // This might be a time-loss:
     let mut input_shape = [1usize;8];
@@ -53,17 +78,13 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
 
 }
 
-fn offset(stride: &[usize;8], indices: [usize;2]) -> usize {
-    //Initializing the offset
-    let mut offset: usize = 0;
 
-    //Basically applying the concept explained in new
-    for i in 0..stride.len(){
-        offset = offset + (stride[i]*indices[i])
-    }
-    offset
+#[inline(always)]
+fn offset(stride: &[usize;8], indices: [usize;2]) -> usize {
+    stride[0] * indices[0] + stride[1] * indices[1]
 }
-// Probably should flag this for inline
+
+#[inline(always)]
 fn get_2d(data: &Vec<f64>, stride: &[usize;8], indices: [usize;2]) -> f64 {
     data[offset(stride, indices)]
 }
@@ -91,20 +112,21 @@ pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
                     .unwrap()
             })
             .unwrap();
+        
         if get_2d(&a, stride, [pivot_row,col]).abs() < 1e-12{
             return Err("Matrix is singular and cannot be inverted!".to_string());
         }
 
+        let col_base = col * stride[0];
+        let row_base = row * stride[0];
+
         if pivot_row != col {
             for k in 0..n {
-                a.swap(
-                    offset(stride,[col,k]),
-                    offset(stride,[pivot_row,k]) 
-                );
-                inv_data.data.swap(
-                    col * n + k,
-                    pivot_row * n + k
-                );
+                let col_k = offset(stride,[col,k]);
+                let pivot_k = offset(stride,[pivot_row,k]);
+                a.swap(col_k,pivot_k);
+                inv_data.data.swap(col * n + k, pivot_row * n + k);
+                
             }
         }
 
@@ -114,17 +136,25 @@ pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
                 continue;
             }
             let factor = a[offset(stride,[row, col])] / pivot_val;
+            
             for k in 0..n {
-                let a_val = a[offset(stride,[col, k])];
-                a[offset(stride,[row, k])] -= factor * a_val;
-                let inv_val = inv_data.get(&[col, k,0,0,0,0,0,0])?;
-                inv_data.data[row*n+k] -= factor * inv_val;
+                let col_k = col_base + stride[1] * k;
+                let row_k = row_base + stride[1] * k;
+                unsafe{
+                    let a_val = *a.get_unchecked(col_k);
+                    *a.get_unchecked_mut(row_k) -= factor * a_val;
+                    let inv_val = *inv_data.data.get_unchecked(col * n + k);
+                    *inv_data.data.get_unchecked_mut(row * n + k) -= factor * inv_val;
+                }
             }
         }
 
         for k in 0..n {
-            a[offset(stride,[col,k])] /= pivot_val;
-            inv_data.data[col*n+k] /= pivot_val;
+            unsafe {
+                let col_k = col_base + stride[1] * k;
+                *a.get_unchecked_mut(col_k) /= pivot_val;
+                *inv_data.data.get_unchecked_mut(col * n + k) /= pivot_val;
+            }
         }
     }
     Ok(inv_data)

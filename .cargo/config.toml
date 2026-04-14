@@ -1,0 +1,8 @@
+[build]
+rustflags = ["-C", "target-cpu=apple-m1", "-C", "target-feature=+neon,+dotprod"]
+
+[profile.release]
+lto = "fat"
+codegen-units = 1
+opt-level = 3
+panic = "abort"
