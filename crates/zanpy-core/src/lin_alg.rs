@@ -5,7 +5,8 @@ use std::mem::MaybeUninit;
 pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
     // We're bounding this to 2D
     // This is the naive approach, add tiling later
-
+    println!("Arr1 shape is: {:?}", arr1.shape);
+    println!("Arr2 shape is: {:?}", arr2.shape);
     let rows_a = arr1.shape[0];
     let cols_a = arr1.shape[1];
     let rows_b = arr2.shape[0];
@@ -20,10 +21,14 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
     }
 
     let mut result_data: Vec<MaybeUninit<f64>> = Vec::with_capacity(rows_a * cols_b);
+    println!("Result data is {:?}", result_data);
 
     unsafe {
         std::ptr::write_bytes(result_data.as_mut_ptr(), 0, rows_a * cols_b);
+        result_data.set_len(rows_a * cols_b);
     }
+
+    println!("Result data is {:?}", result_data);
 
     let s1_row = arr1.stride[0];
     let s1_col = arr1.stride[1];
@@ -63,13 +68,13 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
             }
         }
     }
-
+    println!("Result data is {:?}", result_data);
     let result_data = unsafe{
         std::mem::transmute::<Vec<MaybeUninit<f64>>, Vec<f64>>(result_data)
     };
 
     // This might be a time-loss:
-    let mut input_shape = [1usize;8];
+    let mut input_shape = [1usize;2];
     input_shape[0] = rows_a;
     input_shape[1] = cols_b;
 
@@ -157,4 +162,43 @@ pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
         }
     }
     Ok(inv_data)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_identity_multiplication() {
+        // 2x2 Identity Matrix
+        let identity = NdArray::new(vec![1.0, 0.0, 0.0, 1.0], &[2, 2]);
+        let b = NdArray::new(vec![5.0, 6.0, 7.0, 8.0], &[2, 2]);
+        
+        let result = mat_mul(&identity,&b).unwrap();
+        assert_eq!(result.data, &[5.0, 6.0, 7.0, 8.0]);
+    }
+
+    #[test]
+    fn test_non_square_matmul() {
+        // (2x3) * (3x2) = (2x2)
+        let a = NdArray::new(vec![1.0, 2.0, 3.0, 4.0, 5.0, 6.0], &[2, 3]);
+        let b = NdArray::new(vec![7.0, 8.0, 9.0, 10.0, 11.0, 12.0], &[3, 2]);
+        
+        let result = mat_mul(&a,&b).unwrap();
+        assert_eq!(result.shape, [2, 2, 0, 0, 0, 0, 0, 0]);
+        // Row 1: (1*7 + 2*9 + 3*11) = 58
+        let x = &[0,0];
+        println!("Index is: {:?}. It has len={}. This is the rank {}", x, x.len(), result.rank);
+        println!("{:?}", result.data);
+        assert_eq!(result.get(x).unwrap(), 58.0);
+    }
+
+    #[test]
+    fn test_dimension_mismatch() {
+        let a = NdArray::new(vec![1.0; 4], &[2, 2]);
+        let b = NdArray::new(vec![1.0; 9], &[3, 3]);
+        
+        let result = mat_mul(&a,&b);
+        assert!(result.is_err(), "Should fail when inner dimensions don't match");
+    }
 }

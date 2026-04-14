@@ -1,8 +1,8 @@
-import zanpy
+import zanpy as zp
 
 # Initialize your custom NdArray
 # This calls your Rust NdArray::new(data, &shape)
-arr = zanpy.PyNdArray([10.0, 20.0, 30.0, 40.0], [2, 2])
+arr = zp.PyNdArray([10.0, 20.0, 30.0, 40.0], [2, 2])
 
 # Access an element
 # This calls your Rust self.inner.get(&indices)
