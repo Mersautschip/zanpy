@@ -83,6 +83,8 @@ impl NdArray {
     }
 
     // Need to check if works
+    // Placeholder function tbh
+    #[allow(dead_code)]
     fn rev_offset(&self, mut offset: usize) -> [usize;8] {
         // Initialize the index vector
         let dimensions = self.shape.len();
