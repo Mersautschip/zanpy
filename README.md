@@ -1,10 +1,4 @@
-To make your GitHub repository look professional, you should use a **Markdown** format for your `README.md`. GitHub renders this automatically, turning it into a structured webpage with code highlighting and math support.
 
-Here is the raw Markdown code. You can copy this entire block and paste it into a file named `README.md` in your project root.
-
------
-
-````markdown
 # 🚀 Zanpy
 
 **Zanpy** is a high-performance N-dimensional array library built in **Rust** with a seamless **Python** interface. It leverages SIMD (Single Instruction, Multiple Data) and cache-efficient memory layouts to provide blazing-fast linear algebra operations.
@@ -121,7 +115,7 @@ pytest tests/
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-```
+
 
 ---
 
@@ -129,4 +123,3 @@ Distributed under the MIT License. See `LICENSE` for more information.
 * **The LICENSE file:** Since the README mentions the MIT license, make sure you have a file named `LICENSE` in your root folder. You can just copy the standard MIT text into it.
 * **Badges:** You can add "status badges" at the top (under the title) for things like "Build Passing" or "PyPI Version" once you have GitHub Actions and PyPI set up.
 * **Screenshots:** If you eventually build a benchmark script, a small screenshot of a terminal showing `Zanpy` outperforming a pure-Python loop is a huge "wow" factor for your repo.
-```
