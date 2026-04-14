@@ -1,34 +1,41 @@
 name: Release
+
 on:
   push:
     tags:
-      - 'v*' # Triggers on tags like v0.1.0
+      - 'v*' # Triggers the workflow when you push a tag like v0.1.0
 
 jobs:
   build_wheels:
-    name: Build wheels on ${{ matrix.os }}
-    runs-on: ${{ matrix.os }}
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest, macos-latest]
-
+    name: Build wheels for macOS (ARM64)
+    runs-on: macos-latest
+    
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
           python-version: '3.12'
-      
-      - name: Build wheels
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin
+
+      - name: Build wheels via Maturin
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          args: --release --out dist -m crates/zanpy-py/Cargo.toml
+          # We explicitly target the M-series architecture here
+          args: --release --out dist -m crates/zanpy-py/Cargo.toml --target aarch64-apple-darwin
           sccache: 'true'
 
-      - name: Upload wheels
+      - name: Upload wheels as artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: wheels-${{ matrix.os }}
+          name: wheels-macos
           path: dist
 
   publish:
@@ -38,10 +45,13 @@ jobs:
     permissions:
       id-token: write # Mandatory for Trusted Publishing
     steps:
-      - uses: actions/download-artifact@v4
+      - name: Download wheels
+        uses: actions/download-artifact@v4
         with:
+          name: wheels-macos
           path: dist
-          merge-multiple: true
 
       - name: Publish to PyPI
         uses: pypa/gh-action-pypi-publish@release/v1
+        with:
+          packages-dir: dist/
