@@ -124,16 +124,17 @@ impl PyNdArray {
         ops::min(&self.inner)
     }
 
-    fn __matmul__(arr1: &PyNdArray, arr2: &PyNdArray) -> PyResult<Self> {
-        let result = lin_alg::mat_mul(&arr1.inner, &arr2.inner)
+    fn __matmul__(&self, arr2: &PyNdArray) -> PyResult<Self> {
+        let result = lin_alg::mat_mul(&self.inner, &arr2.inner)
             .map_err(pyo3::exceptions::PyValueError::new_err)?;
         Ok(PyNdArray { inner: result })
     }
 
     /// Matrix Inverse
-    fn inv(arr: &PyNdArray) -> PyResult<Self> {
+    fn inv(&self) -> PyResult<Self> {
+        // We use self.inner because &self is now in the function signature
         let result = lin_alg::inverse(&self.inner)
-            .map_err(pyo3::exceptions::PyValueError::new_err)?;
+            .map_err(|e| pyo3::exceptions::PyValueError::new_err(e))?;
         Ok(PyNdArray { inner: result })
     }
 }
