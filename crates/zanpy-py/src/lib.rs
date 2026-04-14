@@ -124,20 +124,15 @@ impl PyNdArray {
         ops::min(&self.inner)
     }
 
-    fn __matmul__(&self, other: &PyNdArray) -> PyResult<Self> {
-        let result = ops::mat_mul(&self.inner, &other.inner)
+    fn __matmul__(arr1: &PyNdArray, arr2: &PyNdArray) -> PyResult<Self> {
+        let result = lin_alg::mat_mul(&arr1.inner, &arr2.inner)
             .map_err(pyo3::exceptions::PyValueError::new_err)?;
         Ok(PyNdArray { inner: result })
     }
 
-    /// Explicit call for matrix multiplication
-    fn matmul(&self, other: &PyNdArray) -> PyResult<Self> {
-        self.__matmul__(other)
-    }
-
     /// Matrix Inverse
-    fn inv(&self) -> PyResult<Self> {
-        let result = ops::inverse(&self.inner)
+    fn inv(arr: &PyNdArray) -> PyResult<Self> {
+        let result = lin_alg::inverse(&self.inner)
             .map_err(pyo3::exceptions::PyValueError::new_err)?;
         Ok(PyNdArray { inner: result })
     }
