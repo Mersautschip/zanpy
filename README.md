@@ -115,11 +115,3 @@ pytest tests/
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-
-
----
-
-### 💡 Pro-Tips for your GitHub Page:
-* **The LICENSE file:** Since the README mentions the MIT license, make sure you have a file named `LICENSE` in your root folder. You can just copy the standard MIT text into it.
-* **Badges:** You can add "status badges" at the top (under the title) for things like "Build Passing" or "PyPI Version" once you have GitHub Actions and PyPI set up.
-* **Screenshots:** If you eventually build a benchmark script, a small screenshot of a terminal showing `Zanpy` outperforming a pure-Python loop is a huge "wow" factor for your repo.
