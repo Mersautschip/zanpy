@@ -1,6 +1,6 @@
 [workspace]
 members = [
-    "crates/zanpy-core",
+    "crates/zanpy-core", "crates/zanpy-py",
 ]
 resolver = "2"
 
@@ -10,5 +10,4 @@ codegen-units = 1
 opt-level = 3
 panic = "abort"
 
-[dependencies]
-wide = "0.7"
+

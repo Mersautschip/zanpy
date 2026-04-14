@@ -1,5 +1,5 @@
 use crate::array::NdArray;
-use wide::f64x4;
+use wide::f64x2;
 use std::mem::MaybeUninit;
 
 pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
@@ -28,7 +28,6 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
     let s1_row = arr1.stride[0];
     let s1_col = arr1.stride[1];
     let s2_row = arr2.stride[0];
-    let s2_col = arr2.stride[1];
 
     let a_ptr = arr1.data.as_ptr();
     let b_ptr = arr2.data.as_ptr();
@@ -46,12 +45,12 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
             let mut j = 0;
             while j + 2 <= cols_b {
                     unsafe {
-                    let b_vec = f64x2::from([ *b_row_ptr.add(j), *b_row_ptr.add(j + 1) ]);
-                    let r_vec = f64x2::from([ *r_row_ptr.add(j), *r_row_ptr.add(j + 1) ]);
+                    let b_vec = f64x2::from([ *b_row_p.add(j), *b_row_p.add(j + 1) ]);
+                    let r_vec = f64x2::from([ *r_row_p.add(j), *r_row_p.add(j + 1) ]);
                     let result = r_vec + a_vec * b_vec;
                     let out: [f64; 2] = result.into();
-                    *r_row_ptr.add(j) = out[0];
-                    *r_row_ptr.add(j + 1) = out[1];
+                    *r_row_p.add(j) = out[0];
+                    *r_row_p.add(j + 1) = out[1];
                 }
                 j += 2;
             }
@@ -59,7 +58,7 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
             
             if j < cols_b {
                 unsafe {
-                    *r_row_ptr.add(j) += val_a * *b_row_ptr.add(j);
+                    *r_row_p.add(j) += val_a * *b_row_p.add(j);
                 }
             }
         }
@@ -118,7 +117,6 @@ pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
         }
 
         let col_base = col * stride[0];
-        let row_base = row * stride[0];
 
         if pivot_row != col {
             for k in 0..n {
@@ -132,6 +130,7 @@ pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
 
         let pivot_val = a[offset(stride,[col, col])];
         for row in 0..n {
+            let row_base = row * stride[0];
             if row == col {
                 continue;
             }

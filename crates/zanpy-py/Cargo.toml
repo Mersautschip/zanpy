@@ -1,0 +1,13 @@
+[package]
+name = "zanpy-py"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+# The name Python will use to import: 'import zanpy'
+name = "zanpy"
+crate-type = ["cdylib"]
+
+[dependencies]
+pyo3 = { version = "0.23", features = ["extension-module"] }
+zanpy-core = { path = "../zanpy-core" }
