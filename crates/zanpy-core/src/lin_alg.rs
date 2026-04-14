@@ -53,16 +53,20 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
 
 }
 
-fn offset(stride: &[usize;8], indices: Vec<usize>) -> usize {
-        //Initializing the offset
-        let mut offset: usize = 0;
+fn offset(stride: &[usize;8], indices: [usize;2]) -> usize {
+    //Initializing the offset
+    let mut offset: usize = 0;
 
-        //Basically applying the concept explained in new
-        for i in 0..stride.len(){
-            offset = offset + (stride[i]*indices[i])
-        }
-        offset
+    //Basically applying the concept explained in new
+    for i in 0..stride.len(){
+        offset = offset + (stride[i]*indices[i])
     }
+    offset
+}
+// Probably should flag this for inline
+fn get_2d(data: &Vec<f64>, stride: &[usize;8], indices: [usize;2]) -> f64 {
+    data[offset(stride, indices)]
+}
 
 pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
     // This will use LU decomposition
@@ -78,24 +82,24 @@ pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
     for col in 0..n {
         let pivot_row = (col..n)
             .max_by(|&i, &j|{
-                a[offset(stride,vec![i,col])]
+                get_2d(&a, stride, [i,col])
                     .abs()
                     .partial_cmp(
-                        &a[offset(stride,vec![j,col])]
+                        &get_2d(&a, stride, [j,col])
                             .abs()
                     )
                     .unwrap()
             })
             .unwrap();
-        if a[offset(stride,vec![pivot_row,col])].abs() < 1e-12{
+        if get_2d(&a, stride, [pivot_row,col]).abs() < 1e-12{
             return Err("Matrix is singular and cannot be inverted!".to_string());
         }
 
         if pivot_row != col {
             for k in 0..n {
                 a.swap(
-                    offset(stride,vec![col,k]),
-                    offset(stride,vec![pivot_row,k]) 
+                    offset(stride,[col,k]),
+                    offset(stride,[pivot_row,k]) 
                 );
                 inv_data.data.swap(
                     col * n + k,
@@ -104,22 +108,22 @@ pub fn inverse(arr: &NdArray) -> Result<NdArray, String> {
             }
         }
 
-        let pivot_val = a[offset(stride,vec![col, col])];
+        let pivot_val = a[offset(stride,[col, col])];
         for row in 0..n {
             if row == col {
                 continue;
             }
-            let factor = a[offset(stride,vec![row, col])] / pivot_val;
+            let factor = a[offset(stride,[row, col])] / pivot_val;
             for k in 0..n {
-                let a_val = a[offset(stride,vec![col, k])];
-                a[offset(stride,vec![row, k])] -= factor * a_val;
+                let a_val = a[offset(stride,[col, k])];
+                a[offset(stride,[row, k])] -= factor * a_val;
                 let inv_val = inv_data.get(&[col, k,0,0,0,0,0,0])?;
                 inv_data.data[row*n+k] -= factor * inv_val;
             }
         }
 
         for k in 0..n {
-            a[offset(stride,vec![col,k])] /= pivot_val;
+            a[offset(stride,[col,k])] /= pivot_val;
             inv_data.data[col*n+k] /= pivot_val;
         }
     }
