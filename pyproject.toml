@@ -1,0 +1,32 @@
+[build-system]
+requires = ["maturin>=1.0,<2.0"]
+build-backend = "maturin"
+
+[project]
+name = "zanpy"
+version = "0.1.0"
+description = "A high-performance N-dimensional array library built in Rust for macOS."
+authors = [
+    { name = "Santiago Zanoni", email = "santiagozanoni08@gmail.com" }
+]
+dependencies = []
+requires-python = ">=3.12"
+readme = "README.md"
+license = { text = "MIT" }
+keywords = ["matrix", "rust", "simd", "ndarray", "math"]
+classifiers = [
+    "Programming Language :: Rust",
+    "Programming Language :: Python :: 3",
+    "Operating System :: MacOS :: MacOS X",
+    "Topic :: Scientific/Engineering :: Mathematics",
+]
+
+[tool.maturin]
+manifest-path = "crates/zanpy-py/Cargo.toml"
+# This ensures the final Python module is just 'import zanpy'
+module-name = "zanpy"
+# Optimizes for M1/M2/M3 chips
+features = ["pyo3/extension-module"]
+
+[project.urls]
+Homepage = "https://github.com/Mersautschip/zanpy"
