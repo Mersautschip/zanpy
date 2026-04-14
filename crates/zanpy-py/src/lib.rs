@@ -141,7 +141,6 @@ impl PyNdArray {
             .map_err(pyo3::exceptions::PyValueError::new_err)?;
         Ok(PyNdArray { inner: result })
     }
-
 }
 
 
