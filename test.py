@@ -13,7 +13,6 @@ def run_benchmark(size, iterations=10):
     b_raw = np.random.randn(size, size).astype(np.float64)
 
     # Pre-convert to Zanpy objects so we only measure the math, not the allocation
-    # Assuming your PyNdArray takes (data: Vec<f64>, shape: Vec<usize>)
     z_a = zanpy.PyNdArray(a_raw.flatten().tolist(), [size, size])
     z_b = zanpy.PyNdArray(b_raw.flatten().tolist(), [size, size])
 
