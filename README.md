@@ -43,17 +43,17 @@ The library was tuned to respect the 128-byte cache line size of the Apple M1. T
 
 Zanpy is available on pip: 
 
-'''
+```
 bash
 pip install zanpy
-'''
+```
 
 ### Prerequisites
 
 You will need the Rust toolchain and `maturin` installed to build the project from source. 
 
 
-'''
+```
 bash
 # Clone the repository
 git clone [https://github.com/yourusername/zanpy.git](https://github.com/yourusername/zanpy.git)
@@ -61,17 +61,17 @@ cd zanpy
 
 # Build with release optimizations
 maturin develop --release
-'''
+```
 
 ### Testing
 
 Run
 
-'''
+```
 bash
 
 python3.12 test.py
-'''
+```
 
 ## Core Features
 
