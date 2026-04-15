@@ -1,6 +1,6 @@
 # zanpy
 
-**A high-performance numerical computing library for Rust.**
+**A Rust-powered NumPy alternative built by a 17-year-old — 50,000× → 5.46× performance improvement.**
 
 `zanpy` is a lightweight, hardware-aware multidimensional array library. It was built to explore the intersection of systems programming and data science, bridging the gap between Python's ease of use and Rust's raw computational power.
 
