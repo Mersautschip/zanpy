@@ -1,6 +1,7 @@
 use crate::array::NdArray;
 use wide::f64x2;
 use std::mem::MaybeUninit;
+use rayon::prelude::*;
 
 // TODO
 // Add sophisticated mat_mul
@@ -47,11 +48,16 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
     let s2_row = arr2.stride[0];
 
     // Pointer arithmetic is always faster
-    let a_ptr = arr1.data.as_ptr();
-    let b_ptr = arr2.data.as_ptr();
-    let r_ptr = result_data.as_mut_ptr() as *mut f64;
+    let a_p = arr1.data.as_ptr() as usize;
+    let b_p = arr2.data.as_ptr() as usize;
+    let r_p = result_data.as_mut_ptr() as usize;
 
-    for i in 0..rows_a {
+    (0..rows_a).into_par_iter().for_each(move |i| {
+        // Re-construct pointers inside the thread
+        let a_ptr = a_p as *mut f64;
+        let b_ptr = b_p as *mut f64;
+        let r_ptr = r_p as *mut f64;
+
         for k in 0..cols_a {
             // Using the stride of arr1 to find the element0
             let val_a = unsafe {*a_ptr.add(i * s1_row + k * s1_col)};
@@ -87,7 +93,7 @@ pub fn mat_mul(arr1: &NdArray, arr2: &NdArray) -> Result<NdArray,String> {
                 }
             }
         }
-    }
+    });
     // println!("Result data is {:?}", result_data);
     // Making the values legible
     let result_data = unsafe{
@@ -114,7 +120,6 @@ fn offset(stride: &[usize;8], indices: [usize;2]) -> usize {
 fn get_2d(data: &Vec<f64>, stride: &[usize;8], indices: [usize;2]) -> f64 {
     data[offset(stride, indices)]
 }
-
 
 // Unfinished function
 // TODO
