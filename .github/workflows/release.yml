@@ -28,7 +28,7 @@ jobs:
         uses: PyO3/maturin-action@v1
         with:
           command: build
-          # We explicitly target the M-series architecture here
+          # Explicitly target the M-series architecture
           args: --release --out dist -m crates/zanpy-py/Cargo.toml --target aarch64-apple-darwin
           sccache: 'true'
 

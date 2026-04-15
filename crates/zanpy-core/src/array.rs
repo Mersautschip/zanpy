@@ -10,7 +10,8 @@ pub struct NdArray{
 
     // The shape will be positive integers and isn't fixed from matrix to matrix
     pub shape: [usize;8],
-    // Shape will be read left to right in Col Major ordering
+    // Shape will be read left to right in Row Major ordering
+    // [z,y,x]
 
     // Same goes for the stride
     pub stride: [usize;8],
@@ -23,18 +24,23 @@ impl NdArray {
         // What I've found out is that the stride for the smallest dimension is always 1
         // Then the stride for the second smallest is the size of the smallest
         // This pattern follows geometrically
-        
 
         let rank = input_shape.len();
         assert!(rank<=8, "zanpy only supports up to 8 dimensions!");
         
+        // Dimensions are bounded in order to maximize speed. 
+        // Vec objects are larger than rust arrays 
+        // Containing multiple in the cache is unsustainable and heap is slow
         let mut shape = [0;8];
         let mut stride = [1; 8];
 
+        // Although this is a time-loss, new() is not a time-sensitive operation
+        // Not to mention, this allows for ease of use as users may input [1,2]
         for i in 0..rank{
             shape[i] = input_shape[i];
         }
 
+        // Basic stride generation logic
         for i in (0..rank-1).rev(){
             stride[i] = stride[i+1] * shape[i+1];
         }
@@ -51,6 +57,8 @@ impl NdArray {
         Ok(self.data[self.offset(indices)])
     }
     
+    // This is the get() function but with stride as an input var in order to make it
+    // Accessible to NdArray.data.copy(). Currently only used in algebra functions.
     pub fn get_strides(arr: &NdArray, stride: &[usize], indices: &[usize]) -> f64 {
         let mut offset: usize = 0;
         for i in 0..stride.len() {
@@ -62,19 +70,34 @@ impl NdArray {
     }
 
     #[inline(always)]
+    // Don't want to take ownership of indices so use & reference 
+    // (Coordinate may show up multiple times in algorithm)
     fn offset(&self, indices: &[usize]) -> usize {
         //Initializing the offset
         let rank = self.rank;
+        // Make sure dimension plane is equal
         assert!(indices.len()== rank, "Missing dimensions");
+
+        for i in 0..rank{
+            // This slows down the function, but makes sure it's an actual val
+            assert!(indices[i] < self.shape[i], "Index is out of range");
+        }
+
         let mut offset: usize = 0;
         
         unsafe{
+            // Unsafe logic, why it's important to do the previous check
+            // Bypasses rust safety checks
             let stride_ptr = self.stride.as_ptr();
             let indices_ptr = indices.as_ptr();
 
             for i in 0..rank{
+                // Dereference the pointer in order to grab the value
+                // .add() moves the pointer forward i points in memory
                 let s = *stride_ptr.add(i);
                 let idx = *indices_ptr.add(i);
+
+                // Offset calculation
                 offset += s * idx;
             }
         }
@@ -82,7 +105,6 @@ impl NdArray {
         offset
     }
 
-    // Need to check if works
     // Placeholder function tbh
     #[allow(dead_code)]
     fn rev_offset(&self, mut offset: usize) -> [usize;8] {
@@ -100,6 +122,8 @@ impl NdArray {
         indices
     }
 
+    // Function that sets a value in a specific point of the matrix
+    // Takes in index references and a f64 val
     pub fn set(&mut self, indices:&[usize], val:f64) {
         let idx = self.offset(indices);
         self.data[idx] = val;
@@ -148,10 +172,14 @@ impl NdArray {
         matrix
     }
 
-    // Function to add equal matrices together
-    pub fn reshape(arr: &NdArray, shape: &[usize]) -> Result<NdArray, String> {
+    // Function to reshape matrix
+    // Inputs: Self and referenced array explaining new shape
+    // Returns: NdArray with equal data
+    // TODO
+    // O(data) time complexity, could be optimized further using Arc<Vec<f64>>, will be added in next release
+    pub fn reshape(&self, shape: &[usize]) -> Result<NdArray, String> {
         // Make sure that the new shape has an equal amount of values as original
-        if arr.shape.iter().product::<usize>() != shape.iter().product::<usize>(){
+        if self.shape.iter().product::<usize>() != shape.iter().product::<usize>(){
             return Err("Shape values don't match".to_string())
         }
         let mut strides = [1; 8];
@@ -164,37 +192,51 @@ impl NdArray {
         for i in (0..rank-1).rev(){
             strides[i] = strides[i+1] * shape[i+1];
         }
-        Ok(NdArray { data: arr.data.clone(), shape:new_shape , stride: strides, rank})
+        Ok(NdArray { data: self.data.clone(), shape:new_shape , stride: strides, rank})
     } 
 
+    // Broadcasting function allowing for the addition of non equal matrices
+    // Inputs: two NdArray references
     pub fn broadcast(arr1: &NdArray, arr2: &NdArray) -> Result<([usize;8], [usize;8], [usize;8]),String> {
         let len1 = arr1.rank;
         let len2 = arr2.rank;
         const MAXLEN:usize = 8;
+        let maxrank = len1.max(len2);
         let mut newdim = [1;MAXLEN];
         let mut strides1 = [1;MAXLEN];
         let mut strides2 = [1;MAXLEN];
 
+        // If same return same
         if arr1.shape == arr2.shape{
             return Ok((arr1.shape, arr1.stride,arr2.stride));
         }
 
-        for i in 0..MAXLEN{
+        for i in 0..maxrank{
+            // If i is within the dimensions of the matrix return it else return 1
             let dim1 = if i < len1 {arr1.shape[len1-i-1]} else {1};
             let dim2 = if i < len2 {arr2.shape[len2-i-1]} else {1};
-
-            if dim1 != dim2 && dim1 != 1 && dim2 != 1{
+            
+            // Dimensions are compatible if that value is equal or one of them is 1 (no val)
+            // Ex. [4,5] is not compatible with [5,4]
+            if dim1 != dim2 && dim1 != 1 && dim2 != 1 {
                 return Err("Dimensions are not compatible".to_string());
             }
+
             else{
+                // Take the larger dimension (this only occurs if one of the values is [1])
                 newdim[i] = dim1.max(dim2);
+                // If the dimension is 1, skip it in this array
                 strides1[i] = if dim1 == 1 { 0 } else { arr1.stride[len1 - i - 1] };
                 strides2[i] = if dim2 == 1 { 0 } else { arr2.stride[len2 - i - 1] };
             }
         }
+        // Reverse the values because the loop was done in reverse
         newdim.reverse();
         strides1.reverse();
         strides2.reverse();
+
+        // Although having strides1 and strides 2 is more variables
+        // It allows for users to not have to worry where their vars are placed when calling the function
         Ok((newdim, strides1, strides2))
 
     }

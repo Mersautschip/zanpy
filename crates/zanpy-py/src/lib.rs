@@ -51,6 +51,12 @@ impl PyNdArray {
         // Return only the active dimensions based on rank
         self.inner.shape[..self.inner.rank].to_vec()
     }
+    
+    #[getter]
+    fn data(&self) -> Vec<f64> {
+        // We return a clone of the vector so Python owns its own copy
+        self.inner.data.clone()
+    }
 
     fn get(&self, indices: Vec<usize>) -> PyResult<f64> {
         // 1. PyO3 creates 'indices' as a Vec<usize>.
